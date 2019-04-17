@@ -1,2 +1,2 @@
-# rdlf
-reference data of labor force(勞動力調查公務資料)
+# rdlfs
+reference data of labor force survey(勞動力調查公務資料)
