@@ -1,49 +1,35 @@
 import json
+import os
 import xlrd
 import re
 import time
 from collections import namedtuple
 from collections import OrderedDict
-from db_conn import DatabaseConnection
+from dbconn import DatabaseConnection
 from log import log, err_log
 
 
-MON_EMP_PATH = '..\\..\\input\\106_MonthlyEmployee.txt'
-COA_PATH = '..\\..\\input\\coa_d03_10711.txt'
-SAMPLE_PATH = '..\\..\\input\\main_107farmerSurvey.txt'
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+INPUT_DATA_DIR = os.path.join(BASE_DIR, 'input/107勞動力調查')
+
+FILES = {
+    'samples': os.path.join(INPUT_DATA_DIR, '104農普勞動力名冊.json'),
+    'lack': os.path.join(INPUT_DATA_DIR, '106勞動力常缺.json'),
+    'hire': os.path.join(INPUT_DATA_DIR, '106勞動力常僱.json'),
+    'lack_short': os.path.join(INPUT_DATA_DIR, '106勞動力臨缺.json'),
+    'hire_short': os.path.join(INPUT_DATA_DIR, '106勞動力臨僱.json'),
+    'households': os.path.join(INPUT_DATA_DIR, 'coa_stat_d03_10804.txt'),
+    }
+
 OUTPUT_PATH = '..\\..\\output\\json\\公務資料.json'
 THIS_YEAR = 107
 ANNOTATION_DICT = {'0': '', '1': '死亡', '2': '除戶'}
 DEAD_LIST = []
 
 # defined namedtuple attribute
-SAMPLE_ATTR = [
-        'layer',
-        'name',
-        'tel',
-        'addr',
-        'county',
-        'town',
-        'link_num',
-        'id',
-        'num',
-        'main_type',
-        'area',
-        'sample_num',
-    ]
-PERSON_ATTR = [
-        'addr_code',
-        'id',
-#         'name',
-        'birthday',
-        'household_num',
-#         'h_name',
-        'addr',
-        'role',
-        'annotation',
-        'h_type',
-        'h_code',
-    ]
+SAMPLE_ATTR = ['layer', 'name', 'tel', 'addr', 'county', 'town', 'link_num', 'id', 'num', 'main_type', 'area','sample_num', ]
+PERSON_ATTR = ['addr_code','id', 'birthday', 'household_num', 'addr', 'role', 'annotation', 'h_type', 'h_code', ]
 
 # use namedtuple promote the readable and flexibility of code
 Sample = namedtuple('Sample', SAMPLE_ATTR)
@@ -240,14 +226,22 @@ def output_josn(data) -> None:
     print('complete', len(official_data), ' records')
     log.info(len(official_data), ' records')
 
-start_time = time.time()
-load_insurance()
-data_calssify()
-m, s = divmod(time.time()-start_time, 60)
-print(int(m), 'min', round(s, 1), 'sec')
-log.info(int(m), ' min ', round(s, 1), ' sec')
- 
-with open('..\\..\\output\\dead.txt', 'w') as f:
-    for i in DEAD_LIST:
-        f.write(i + '\n')
+
+if __name__ == '__main__' :
+    print(BASE_DIR, INPUT_DATA_DIR)
     
+    with open(FILES['lack'], encoding='utf8') as f:
+        for i, l in enumerate(f):
+            print(l)
+            if i == 10:
+                break
+# start_time = time.time()
+# load_insurance()
+# data_calssify()
+# m, s = divmod(time.time()-start_time, 60)
+# print(int(m), 'min', round(s, 1), 'sec')
+# log.info(int(m), ' min ', round(s, 1), ' sec')
+#  
+# with open('..\\..\\output\\dead.txt', 'w') as f:
+#     for i in DEAD_LIST:
+#         f.write(i + '\n')
