@@ -28,18 +28,15 @@ ANNOTATION_DICT = {'0': '', '1': '死亡', '2': '除戶'}
 DEAD_LIST = []
 
 # defined namedtuple attribute
-SAMPLE_ATTR = ['layer', 'name', 'tel', 'addr', 'county', 'town', 'link_num', 'id', 'num', 'main_type', 'area','sample_num', ]
 PERSON_ATTR = ['addr_code','id', 'birthday', 'household_num', 'addr', 'role', 'annotation', 'h_type', 'h_code', ]
 
 # use namedtuple promote the readable and flexibility of code
-Sample = namedtuple('Sample', SAMPLE_ATTR)
 Person = namedtuple('Person', PERSON_ATTR)
 
 monthly_employee_dict = {}
 insurance_data = {}
 
-# every element is a Sample obj
-all_samples = []
+all_samples = json.loads(open(FILES['samples'], encoding='utf8').read())
 households = {}
 official_data = {}
 sample_count = 0
@@ -52,11 +49,12 @@ def load_monthly_employee() -> None:
 
 def data_calssify() -> None:
     # 有效身分證之樣本
-    samples_dict = load_samples()
-    # 樣本與戶籍對照 dict
-    # key: 樣本之身分證字號, value: 樣本之戶號
+    valid_samples_id_dict = get_valid_samples_id()
+    # 樣本與戶號對照 dict
+    # key: 樣本身分證字號, value: 樣本戶號
     comparison_dict = {}
-    with open(COA_PATH, 'r', encoding='utf8') as f:
+    
+    with open(FILES['households'], 'r', encoding='utf8') as f:
         for coa_data in f:
             
             # create Person object
@@ -64,34 +62,49 @@ def data_calssify() -> None:
             pid = person.id
             hhn = person.household_num
             
-            #以戶號判斷是否存在, 存在則新增資料, 否則新增一戶
+            # 以戶號判斷是否存在, 存在則往列表(戶內人口列表)裡增加成員, 否則新增一戶
             if hhn in households:
                 households.get(hhn).append(person)
             else:
-                # 一戶所有的人
+                # 戶內人口列表
                 persons = []
+                # 往列表裡添加成員
                 persons.append(person)
                 households[hhn] = persons
                 
-            #樣本身份證對應到戶籍資料就存到對照 dict
-            if pid in samples_dict:
+            # 樣本 ID 若能對應到有效 ID dict, 就往對照 dict 裡新增(key: id, value: 戶號)
+            if pid in valid_samples_id_dict:
                 comparison_dict[pid] = hhn
     build_official_data(comparison_dict)
+
+
+def get_valid_samples_id() -> dict:
+    """
+    讀取樣本 JSON 檔並迭代撿查 ID 是否重複且有效
+    並將錯誤記錄至 log 檔
     
-def load_samples() -> dict:
+    :return valid_id_dict: 不重複且有效的樣本ID字典，value 為空值 
+    """
     no_id_count = 0
-    global all_samples
-    # 將 sample 檔裡所有的資料原封不動存到列表裡
-    all_samples = [Sample._make(l.split('\t')) for l in open(SAMPLE_PATH, encoding='utf8')]
-    samples_dict = {}
-    for s in all_samples:
-        if s.id not in samples_dict and re.match('^[A-Z]{1}[1-2]{1}[0-9]{8}$', s.id):
-            samples_dict[s.id] = s
+    duplicate_count = 0
+    valid_id_dict = {}
+    
+    for sample in all_samples:
+        # 去除重複的人與檢查身份證字號格式是否正確
+        if sample['id'] not in valid_id_dict and re.match('^[A-Z]{1}[1-2]{1}[0-9]{8}$', sample['id']):
+            valid_id_dict[sample['id']] = ''
         else:
-            no_id_count += 1
-            err_log.error(no_id_count, ', sample name = ', s.name, ', sample id = ', s.id)
+            err_log.error('sample name = ', sample['name'], ', sample id = ', sample['id'])
+            
+            if sample['id'] == '0':
+                no_id_count += 1
+            else:
+                duplicate_count += 1
+                
+    log.info('no id count = ', no_id_count, ', duplicate count = ', duplicate_count)
     global sample_count; sample_count = len(all_samples)
-    return samples_dict
+    return valid_id_dict
+
 
 def build_official_data(comparison_dict) -> None:
     no_hh_count = 0
@@ -101,18 +114,16 @@ def build_official_data(comparison_dict) -> None:
                   'labor_insurance', 'labor_pension', 'farmer_insurance_payment', 'scholarship', 'sb']
     #key dict: for readable
     k_d = {person_key[i]:i for i in range(len(person_key))}
-    # every element is a Sample object
+
     for sample in all_samples:
         count += 1
         address, birthday, farmer_id, farmer_num = '', '', '', ''
         # json 資料
         json_data = OrderedDict()
         json_household = []
-        json_sb_sbdy = []
         json_disaster = []
-        json_declaration = ''
         json_crop_sbdy = []
-        json_livestock = {}
+        
         farmer_id = sample.id
         farmer_num = sample.num
         if farmer_id in comparison_dict:
@@ -210,10 +221,9 @@ def build_official_data(comparison_dict) -> None:
         json_data['serial'] = farmer_num[-5:]
         json_data['household'] = json_household
         json_data['monEmp'] = monthly_employee_dict.get(farmer_num, [])
-        json_data['declaration'] = json_declaration[:-1]
         json_data['cropSbdy'] = json_crop_sbdy
         json_data['disaster'] = json_disaster
-        json_data['sbSbdy'] = json_sb_sbdy
+        
         official_data[farmer_num] = json_data
         print('%.2f%%' %(count/sample_count * 100))
     db.close_conn()
@@ -229,12 +239,9 @@ def output_josn(data) -> None:
 
 if __name__ == '__main__' :
     print(BASE_DIR, INPUT_DATA_DIR)
+    data = json.loads(open(FILES['samples'], encoding='utf8').read())
+    data_calssify()
     
-    with open(FILES['lack'], encoding='utf8') as f:
-        for i, l in enumerate(f):
-            print(l)
-            if i == 10:
-                break
 # start_time = time.time()
 # load_insurance()
 # data_calssify()
