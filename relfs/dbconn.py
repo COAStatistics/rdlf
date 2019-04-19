@@ -20,12 +20,13 @@ class DatabaseConnection:
     CROP_SUBSIDY =\
     """
     SELECT [crop], [price], [period]
-    FROM [fallow].[dbo].[107transferSubsidy_farmerSurvey]
+    FROM [fallow].[dbo].[106phstemp_farmerSurvey]
     WHERE [id] = convert(nvarchar(255), ?)
     """
     
-    pid = None
+    __pid = None
     args = 'Driver={ODBC Driver 13 for SQL Server};Server=172.16.21.8;Database=%s;Trusted_Connection=yes;'
+    __instance = None
     
     def __init__(self, db_name='fallow'):
         self.conn = pyodbc.connect(DatabaseConnection.args % db_name)
@@ -34,7 +35,7 @@ class DatabaseConnection:
     def get_disaster(self) -> list:
         d_l = []
         try:
-            self.cur.execute(DatabaseConnection.DISASTER, DatabaseConnection.pid)
+            self.cur.execute(DatabaseConnection.DISASTER, DatabaseConnection.__pid)
         except Exception:
             info = sys.exc_info()
             err_log.error(info[0], '\t', info[1])
@@ -54,7 +55,7 @@ class DatabaseConnection:
     def get_crop_subsidy(self) -> list:
         c_s_l = []
         try: 
-            self.cur.execute(DatabaseConnection.CROP_SUBSIDY, DatabaseConnection.pid)
+            self.cur.execute(DatabaseConnection.CROP_SUBSIDY, DatabaseConnection.__pid)
         except Exception:
             info = sys.exc_info()
             err_log.error(info[0], '\t', info[1])
@@ -74,7 +75,19 @@ class DatabaseConnection:
     def close_conn(self) -> None:
         self.cur.close()
         self.conn.close()
+    
+    @classmethod
+    def set_pid(cls, pid):
+        cls.__piqd = pid
 
+    @staticmethod
+    def get_db_instance():
+        if DatabaseConnection.__instance is not None:
+            return DatabaseConnection.__instance
+        else:
+            DatabaseConnection.__instance = DatabaseConnection()
+            return DatabaseConnection.__instance
+        
 
 # db = DatabaseConnection('farmer_insurance')
 # DatabaseConnection.pid = 'Q121362090'

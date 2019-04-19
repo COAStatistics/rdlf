@@ -106,6 +106,39 @@ def get_valid_samples_id() -> dict:
     return valid_id_dict
 
 
+def get_members_base_data(members) -> list:
+    members_data_list = []
+    
+    for person in members:
+        person_data = [person.birthday, person.role]
+        members_data_list.append(person_data)
+    
+    return members_data_list
+
+
+def get_data_set(members):
+    disaster_list = []
+    crop_sbdy_list = []
+    db = DatabaseConnection.get_db_instance()
+    
+    for person in members:
+        age = 107 - int(person.birthday[:3])
+        if age >= 18:
+            DatabaseConnection.set_pid(person.id)
+            disaster = db.get_disaster()
+            if disaster:
+                disaster_list.extend(disaster)
+                log.info(person.id, ', disaster = ', disaster_list)
+                
+            crop_sbdy = db.get_crop_subsidy()
+            if crop_sbdy:
+                crop_sbdy_list.extend(crop_sbdy)
+                log.info(person.id, ', crop_sbdy = ', crop_sbdy_list)
+    
+    if disaster_list or crop_sbdy_list:
+        print(disaster_list, crop_sbdy_list)
+    return {'disaster': disaster_list, 'crop_sbdy': crop_sbdy_list}
+
 def build_official_data(comparison_dict) -> None:
     no_hh_count = 0
     count = 0
@@ -124,110 +157,114 @@ def build_official_data(comparison_dict) -> None:
         json_disaster = []
         json_crop_sbdy = []
         
-        farmer_id = sample.id
-        farmer_num = sample.num
-        if farmer_id in comparison_dict:
-            household_num = comparison_dict.get(farmer_id)
-            if household_num in households:
-                
-                # households.get(household_num) : 每戶 
-                # person : 每戶的每個人
-                # person is a Person object
-                for person in households.get(household_num):
-                    name = ''
-                    pid = person.id
-                    
-                    # json data 主要以 sample 的人當資料，所以要判斷戶內人是否為 sample
-                    if pid == sample.id:
-                        name = sample.name
-                        address = sample.addr
-                        # 民國年
-                        birthday = str(int(person.birthday[:3]))
-                        
-                    # 轉成實際年齡
-                    age = THIS_YEAR - int(person.birthday[:3])
-                    DatabaseConnection.pid = pid
-                        
-                    # json 裡的 household 對應一戶裡的所有個人資料
-                    json_hh_person = [''] * 11
-                    
-                    json_hh_person[k_d['birthday']] = str(int(person.birthday[:3]))
-                    json_hh_person[k_d['role']] = person.role
-                    annotation = ANNOTATION_DICT.get(person.annotation)
-                    if annotation == '死亡':
-                        DEAD_LIST.append(person.id)
-                    json_hh_person[k_d['annotation']] = annotation
-                    
-                
-                    # 根據年齡來過濾是否訪問 db
-                    # 農保至少15歲
-                    if age >= 15:
-                        json_hh_person[k_d['farmer_insurance']] = db.get_farmer_insurance()
-                        # 老農津貼至少65歲
-                        if age >= 65:
-                            json_hh_person[k_d['elder_allowance']] = db.get_elder_allowance()
-                        # 佃農18-55歲，地主至少18歲
-                        if age >= 18:
-                            json_hh_person[k_d['sb']] = db.get_landlord()
-                            if age <= 55:
-                                json_hh_person[k_d['sb']] += db.get_tenant_farmer()
-                            subsidy = [
-                                    name,
-                                    db.get_tenant_transfer_subsidy(),
-                                    db.get_landlord_rent(),
-                                    db.get_landlord_retire()
-                                ]
-                            if any((i != '0') for i in subsidy[1:]):
-                                json_sb_sbdy.append(subsidy)
-                                log.info(pid, ', sbSbdy = ', json_sb_sbdy)
-                                
-                            disaster = db.get_disaster()
-                            if disaster:
-                                json_disaster.extend(disaster)
-                                log.info(pid, ', disaster = ', json_disaster)
-                                
-                            declaration = db.get_declaration()
-                            if declaration and declaration not in json_declaration:
-                                json_declaration += declaration + ','
-                                assert len(json_declaration) != 0
-                                log.info(pid, ', declaration = ', json_declaration)
-                                
-                            crop_sbdy = db.get_crop_subsidy()
-                            if crop_sbdy:
-                                json_crop_sbdy.extend(crop_sbdy)
-                                log.info(pid, ', crop_sbdy = ', json_crop_sbdy)
-                    json_household.append(json_hh_person)
-        else:
-            DatabaseConnection.pid = farmer_id
-            address = sample.addr
-            json_hh_person = [''] * 11
-            if sample.id in insurance_data:
-                insurance = insurance_data.get(sample.id)
-                for i in range(5, 9):
-                    json_hh_person[i] = format(insurance[i-5], '8,d')
-                    
-            json_household.append(json_hh_person)
-            if sample.id:
-                no_hh_count += 1
-                err_log.error(no_hh_count, ', Not in household file. ', sample)
-            
-        # create json data
-        json_data['name'] = sample.name
-        json_data['address'] = address
-        json_data['birthday'] = birthday
-        json_data['farmerId'] = farmer_id
-        json_data['telephone'] = sample.tel
-        json_data['layer'] = sample.layer
-        json_data['serial'] = farmer_num[-5:]
-        json_data['household'] = json_household
-        json_data['monEmp'] = monthly_employee_dict.get(farmer_num, [])
-        json_data['cropSbdy'] = json_crop_sbdy
-        json_data['disaster'] = json_disaster
+#         farmer_id = sample.id
+#         farmer_num = sample.num
         
-        official_data[farmer_num] = json_data
-        print('%.2f%%' %(count/sample_count * 100))
-    db.close_conn()
-    output_josn(official_data)
+        if sample['id'] in comparison_dict:
+            members = households.get(comparison_dict[sample['id']])
+            members_data = get_members_base_data(members)
+            data_set = get_data_set(members)
+            
+            
+            
+            # households.get(household_num) : 每戶 
+            # person : 每戶的每個人
+            # person is a Person object
+#             for person in households.get(household_num):
+#                 name = ''
+#                 pid = person.id
+#                 
+#                 # json data 主要以 sample 的人當資料，所以要判斷戶內人是否為 sample
+#                 if pid == sample.id:
+#                     name = sample.name
+#                     address = sample.addr
+#                     # 民國年
+#                     birthday = str(int(person.birthday[:3]))
+#                     
+#                 # 轉成實際年齡
+#                 age = THIS_YEAR - int(person.birthday[:3])
+#                 DatabaseConnection.pid = pid
+#                     
+#                 # json 裡的 household 對應一戶裡的所有個人資料
+#                 json_hh_person = [''] * 11
+#                 
+#                 json_hh_person[k_d['birthday']] = str(int(person.birthday[:3]))
+#                 json_hh_person[k_d['role']] = person.role
+#                 annotation = ANNOTATION_DICT.get(person.annotation)
+#                 if annotation == '死亡':
+#                     DEAD_LIST.append(person.id)
+#                 json_hh_person[k_d['annotation']] = annotation
+#                 
+#             
+#                 # 根據年齡來過濾是否訪問 db
+#                 # 農保至少15歲
+#                 if age >= 15:
+#                     json_hh_person[k_d['farmer_insurance']] = db.get_farmer_insurance()
+#                     # 老農津貼至少65歲
+#                     if age >= 65:
+#                         json_hh_person[k_d['elder_allowance']] = db.get_elder_allowance()
+#                     # 佃農18-55歲，地主至少18歲
+#                     if age >= 18:
+#                         json_hh_person[k_d['sb']] = db.get_landlord()
+#                         if age <= 55:
+#                             json_hh_person[k_d['sb']] += db.get_tenant_farmer()
+#                         subsidy = [
+#                                 name,
+#                                 db.get_tenant_transfer_subsidy(),
+#                                 db.get_landlord_rent(),
+#                                 db.get_landlord_retire()
+#                             ]
+#                         if any((i != '0') for i in subsidy[1:]):
+#                             json_sb_sbdy.append(subsidy)
+#                             log.info(pid, ', sbSbdy = ', json_sb_sbdy)
+#                             
+#                         disaster = db.get_disaster()
+#                         if disaster:
+#                             json_disaster.extend(disaster)
+#                             log.info(pid, ', disaster = ', json_disaster)
+#                             
+#                         declaration = db.get_declaration()
+#                         if declaration and declaration not in json_declaration:
+#                             json_declaration += declaration + ','
+#                             assert len(json_declaration) != 0
+#                             log.info(pid, ', declaration = ', json_declaration)
+#                             
+#                         crop_sbdy = db.get_crop_subsidy()
+#                         if crop_sbdy:
+#                             json_crop_sbdy.extend(crop_sbdy)
+#                             log.info(pid, ', crop_sbdy = ', json_crop_sbdy)
+#                 json_household.append(json_hh_person)
+#         else:
+#             DatabaseConnection.pid = farmer_id
+#             address = sample.addr
+#             json_hh_person = [''] * 11
+#             if sample.id in insurance_data:
+#                 insurance = insurance_data.get(sample.id)
+#                 for i in range(5, 9):
+#                     json_hh_person[i] = format(insurance[i-5], '8,d')
+#                     
+#             json_household.append(json_hh_person)
+#             if sample.id:
+#                 no_hh_count += 1
+#                 err_log.error(no_hh_count, ', Not in household file. ', sample)
+#             
+#         # create json data
+#         json_data['name'] = sample.name
+#         json_data['address'] = address
+#         json_data['birthday'] = birthday
+#         json_data['farmerId'] = farmer_id
+#         json_data['telephone'] = sample.tel
+#         json_data['layer'] = sample.layer
+#         json_data['serial'] = farmer_num[-5:]
+#         json_data['household'] = json_household
+#         json_data['monEmp'] = monthly_employee_dict.get(farmer_num, [])
+#         json_data['cropSbdy'] = json_crop_sbdy
+#         json_data['disaster'] = json_disaster
+#         
+#         official_data[farmer_num] = json_data
+#         print('%.2f%%' %(count/sample_count * 100))
+#     db.close_conn()
+#     output_josn(official_data)
     
 
 def output_josn(data) -> None:
@@ -239,7 +276,7 @@ def output_josn(data) -> None:
 
 if __name__ == '__main__' :
     print(BASE_DIR, INPUT_DATA_DIR)
-    data = json.loads(open(FILES['samples'], encoding='utf8').read())
+#     data = json.loads(open(FILES['samples'], encoding='utf8').read())
     data_calssify()
     
 # start_time = time.time()
