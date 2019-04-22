@@ -20,7 +20,7 @@ class DatabaseConnection:
     CROP_SUBSIDY =\
     """
     SELECT [crop], [price], [period]
-    FROM [fallow].[dbo].[106phstemp_farmerSurvey]
+    FROM [fallow].[dbo].[107transferSubsidy_farmerSurvey]
     WHERE [id] = convert(nvarchar(255), ?)
     """
     
@@ -60,14 +60,14 @@ class DatabaseConnection:
             info = sys.exc_info()
             err_log.error(info[0], '\t', info[1])
         else:
-            rows = self.cur.fetchall()                
+            rows = self.cur.fetchall()             
             if rows:
                 for record in rows:
                     l = list(record)
                     try:
                         assert float(l[1]) > 0 and l[2] == '1'
                     except AssertionError:
-                        err_log.error('AssertionError: ', self.get_crop_subsidy.__name__, ' id=', DatabaseConnection.pid, ' ', l)
+                        err_log.error('AssertionError: ', self.get_crop_subsidy.__name__, ' id=', DatabaseConnection.__pid, ' ', l)
                     else:
                         c_s_l.append(l)
         return c_s_l
@@ -78,7 +78,7 @@ class DatabaseConnection:
     
     @classmethod
     def set_pid(cls, pid):
-        cls.__piqd = pid
+        cls.__pid = pid
 
     @staticmethod
     def get_db_instance():

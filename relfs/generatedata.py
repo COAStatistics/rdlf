@@ -135,36 +135,44 @@ def get_data_set(members):
                 crop_sbdy_list.extend(crop_sbdy)
                 log.info(person.id, ', crop_sbdy = ', crop_sbdy_list)
     
-    if disaster_list or crop_sbdy_list:
-        print(disaster_list, crop_sbdy_list)
     return {'disaster': disaster_list, 'crop_sbdy': crop_sbdy_list}
 
+
+def get_104_month_hire(sample) -> list:
+    mon_hire_list = [
+        sample["hire_Jan"],
+        sample["hire_Feb"],
+        sample["hire_March"],
+        sample["hire_April"],
+        sample["hire_May"],
+        sample["hire_June"],
+        sample["hire_July"],
+        sample["hire_Aug"],
+        sample["hire_Sep"],
+        sample["hire_Oct"],
+        sample["hire_Nov"],
+        sample["hire_Dec"],
+        ]
+    return mon_hire_list
+
+
 def build_official_data(comparison_dict) -> None:
-    no_hh_count = 0
-    count = 0
-    db = DatabaseConnection()
-    person_key = ['birthday', 'role', 'annotation', 'farmer_insurance', 'elder_allowance', 'national_pension',
-                  'labor_insurance', 'labor_pension', 'farmer_insurance_payment', 'scholarship', 'sb']
-    #key dict: for readable
-    k_d = {person_key[i]:i for i in range(len(person_key))}
+#     no_hh_count = 0
+#     count = 0
+#     person_key = ['birthday', 'role', 'annotation', 'farmer_insurance', 'elder_allowance', 'national_pension',
+#                   'labor_insurance', 'labor_pension', 'farmer_insurance_payment', 'scholarship', 'sb']
+#     #key dict: for readable
+#     k_d = {person_key[i]:i for i in range(len(person_key))}
 
     for sample in all_samples:
-        count += 1
-        address, birthday, farmer_id, farmer_num = '', '', '', ''
-        # json 資料
-        json_data = OrderedDict()
-        json_household = []
-        json_disaster = []
-        json_crop_sbdy = []
-        
-#         farmer_id = sample.id
-#         farmer_num = sample.num
+#         count += 1
+#         address, birthday, farmer_id, farmer_num = '', '', '', ''
         
         if sample['id'] in comparison_dict:
             members = households.get(comparison_dict[sample['id']])
             members_data = get_members_base_data(members)
             data_set = get_data_set(members)
-            
+            mon_hire_104y_list = get_104_month_hire(sample)
             
             
             # households.get(household_num) : 每戶 
