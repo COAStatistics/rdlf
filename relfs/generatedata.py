@@ -37,6 +37,7 @@ monthly_employee_dict = {}
 insurance_data = {}
 
 all_samples = json.loads(open(FILES['samples'], encoding='utf8').read())
+hire_106y_dict = {}
 households = {}
 official_data = {}
 sample_count = 0
@@ -156,6 +157,21 @@ def get_104_month_hire(sample) -> list:
     return mon_hire_list
 
 
+def get_106_hire(farmer_num):
+    
+    if not hire_106y_dict:
+        for d in json.loads(open(FILES['hire'], encoding='utf8').read()):
+            if d['farmer_num'] not in hire_106y_dict:
+                hire_106y_dict[d['farmer_num']] = [d]
+            else:
+                hire_106y_dict.get(d['farmer_num']).append(d)
+    
+    if farmer_num in hire_106y_dict:
+        pass
+    else:
+        return []
+        
+    
 def build_official_data(comparison_dict) -> None:
 #     no_hh_count = 0
 #     count = 0
@@ -173,7 +189,7 @@ def build_official_data(comparison_dict) -> None:
             members_data = get_members_base_data(members)
             data_set = get_data_set(members)
             mon_hire_104y_list = get_104_month_hire(sample)
-            
+            hire_106y_list = get_106_hire(sample['farmer_num'])
             
             # households.get(household_num) : 每戶 
             # person : 每戶的每個人
