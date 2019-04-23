@@ -16,12 +16,12 @@ INPUT_DATA_DIR = os.path.join(BASE_DIR, 'input/107勞動力調查')
 OUTPUT_DATA_DIR = os.path.join(BASE_DIR, 'output/107勞動力調查/json/data.json')
 
 FILES = {
-    'samples': os.path.join(INPUT_DATA_DIR, '104農普勞動力名冊_test.json'),
+    'samples': os.path.join(INPUT_DATA_DIR, '104農普勞動力名冊.json'),
     'lack': os.path.join(INPUT_DATA_DIR, '106勞動力常缺.json'),
     'hire': os.path.join(INPUT_DATA_DIR, '106勞動力常僱.json'),
     'short_lack': os.path.join(INPUT_DATA_DIR, '106勞動力臨缺.json'),
     'short_hire': os.path.join(INPUT_DATA_DIR, '106勞動力臨僱.json'),
-    'households': os.path.join(INPUT_DATA_DIR, 'coa_stat_d03_10804_test.txt'),
+    'households': os.path.join(INPUT_DATA_DIR, 'coa_stat_d03_10804.txt'),
     }
 
 # defined namedtuple attribute
@@ -40,7 +40,6 @@ lack_106y_dict = {}
 short_lack_106y_dict = {}
 households = {}
 result_data = {}
-sample_count = 0
 
 
 def data_calssify() -> None:
@@ -105,8 +104,16 @@ def get_valid_samples_id() -> dict:
 
 
 def get_members_base_data(members) -> list:
+    """
+    迭代整戶的人(每個人都是一個 Person 物件) 只取得出生年與戶長關係並重新回傳一個新列表
+    :param members: 列表(整戶的人的資料)
+    :return members_data_list: 巢状列表，裡面每個列表都是一個成員的資料 
+    """
+    
+    # 一整戶的列表
     members_data_list = []
     
+    # 每個成員都是 Person 物件
     for person in members:
         person_data = [str(int(person.birthday[:3])), person.role]
         members_data_list.append(person_data)
@@ -114,7 +121,15 @@ def get_members_base_data(members) -> list:
     return members_data_list
 
 
-def get_data_set(members):
+def get_data_set(members) -> dict:
+    """
+    迭代整戶的人(每個人都是一個 Person 物件) 根據年齡來訪問資料庫，以減少時間成本
+    以 ID 為參數去資料庫查詢休耕轉作補貼資料與天然災害資料
+    :param members: 列表(整戶的人的資料)
+    :return dict: 包含轉作與天災的字典 
+    """
+    
+    # 大列表，裡面每個列表都是一筆資料
     disaster_list = []
     crop_sbdy_list = []
     db = DatabaseConnection.get_db_instance()
@@ -155,6 +170,13 @@ def get_104_month_hire(sample) -> list:
 
 
 def get_106_hire_or_lack(farmer_num, name):
+    """
+    因 常僱 常缺 臨缺 JSON 檔裡的資料格式一樣，因此併成一個 fn 來寫，需再傳入檔名
+    :param farmer_num: 農戶編號
+    :param name: 檔名，用來判斷選擇變數
+    :return list or empty list: 若有對應到農戶編號則回傳列表，否則回傳空列表 
+    """
+    # 判斷要開啟哪個檔
     choose = {
         'hire': (hire_106y_dict, FILES['hire']),
         'lack': (lack_106y_dict, FILES['lack']),
@@ -162,6 +184,8 @@ def get_106_hire_or_lack(farmer_num, name):
         }
     _dict, _name = choose[name]
     
+    # lazy read file, 如果沒資料才讀取
+    # key: farmer_num, value: list(月份資料)，同個農戶可能有多筆資料
     if not _dict:
         for d in json.loads(open(_name, encoding='utf8').read()):
             if d['農戶編號'] not in _dict:
@@ -242,7 +266,7 @@ def generate_json_data(sample, birthday, household, data_set, mon_hire_104y,
     data['tel'] = sample['tel']
     data['addr'] = sample['addr']
     data['birthday'] = str(birthday)
-    data['layer'] = str(sample['sample_number'])
+    data['layer'] = str(sample['strata'])
     data['link_num'] = str(sample['link_num'])
     data['household'] = household
     data['crop_sbdy'] = data_set.get('crop_sbdy', [])
