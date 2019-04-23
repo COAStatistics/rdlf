@@ -39,6 +39,8 @@ insurance_data = {}
 all_samples = json.loads(open(FILES['samples'], encoding='utf8').read())
 hire_106y_dict = {}
 short_hire_106y_dict = {}
+lack_106y_dict = {}
+short_lack_106y_dict = {}
 households = {}
 official_data = {}
 sample_count = 0
@@ -158,16 +160,23 @@ def get_104_month_hire(sample) -> list:
     return mon_hire_list
 
 
-def get_106_hire(farmer_num):
-    if not hire_106y_dict:
-        for d in json.loads(open(FILES['hire'], encoding='utf8').read()):
-            if d['農戶編號'] not in hire_106y_dict:
-                hire_106y_dict[d['農戶編號']] = [d]
-            else:
-                hire_106y_dict.get(d['農戶編號']).append(d)
+def get_106_hire_or_lack(farmer_num, name):
+    choose = {
+        'hire': (hire_106y_dict, FILES['hire']),
+        'lack': (lack_106y_dict, FILES['lack']),
+        'short_lack': (short_lack_106y_dict, FILES['short_lack']),
+        }
+    _dict, _name = choose[name]
     
-    if farmer_num in hire_106y_dict:
-        return hire_106y_dict.get(farmer_num)
+    if not _dict:
+        for d in json.loads(open(_name, encoding='utf8').read()):
+            if d['農戶編號'] not in _dict:
+                _dict[d['農戶編號']] = [d]
+            else:
+                _dict.get(d['農戶編號']).append(d)
+    
+    if farmer_num in _dict:
+        return _dict.get(farmer_num)
     else:
         return []
 
@@ -190,12 +199,11 @@ def get_106_short_hire(farmer_num):
                         d["Nov"],
                         d["Dec"],
                     ]
-    
     if farmer_num in short_hire_106y_dict:
         return short_hire_106y_dict.get(farmer_num)
     else:
         return []
-    
+
 
 def build_official_data(comparison_dict) -> None:
 #     no_hh_count = 0
@@ -214,9 +222,11 @@ def build_official_data(comparison_dict) -> None:
 #             members_data = get_members_base_data(members)
 #             data_set = get_data_set(members)
 #             mon_hire_104y_list = get_104_month_hire(sample)
-            hire_106y_list = get_106_hire(sample['farmer_num'])
-            short_hire_106y_list = get_106_short_hire(sample['farmer_num'])
-            lack_situatuin = sample.get('lacks106')
+#             hire_106y_list = get_106_hire_or_lack(sample['farmer_num'], 'hire')
+#             short_hire_106y_list = get_106_short_hire(sample['farmer_num'])
+#             lack_situatuin = sample.get('lacks106')
+            lack_106y_list = get_106_hire_or_lack(sample['farmer_num'], 'lack')
+            short_lack_106y_list = get_106_hire_or_lack(sample['farmer_num'], 'short_lack')
             
             # households.get(household_num) : 每戶 
             # person : 每戶的每個人
