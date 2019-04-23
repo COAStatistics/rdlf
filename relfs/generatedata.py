@@ -38,6 +38,7 @@ insurance_data = {}
 
 all_samples = json.loads(open(FILES['samples'], encoding='utf8').read())
 hire_106y_dict = {}
+short_hire_106y_dict = {}
 households = {}
 official_data = {}
 sample_count = 0
@@ -158,20 +159,44 @@ def get_104_month_hire(sample) -> list:
 
 
 def get_106_hire(farmer_num):
-    
     if not hire_106y_dict:
         for d in json.loads(open(FILES['hire'], encoding='utf8').read()):
-            if d['farmer_num'] not in hire_106y_dict:
-                hire_106y_dict[d['farmer_num']] = [d]
+            if d['農戶編號'] not in hire_106y_dict:
+                hire_106y_dict[d['農戶編號']] = [d]
             else:
-                hire_106y_dict.get(d['farmer_num']).append(d)
+                hire_106y_dict.get(d['農戶編號']).append(d)
     
     if farmer_num in hire_106y_dict:
-        pass
+        return hire_106y_dict.get(farmer_num)
     else:
         return []
-        
+
+
+def get_106_short_hire(farmer_num):
+    if not short_hire_106y_dict:
+        for d in json.loads(open(FILES['short_hire'], encoding='utf8').read()):
+            if d['農戶編號'] not in short_hire_106y_dict:
+                short_hire_106y_dict[d['農戶編號']] = [
+                        d["Jan"],
+                        d["Feb"],
+                        d["Mar"],
+                        d["Apr"],
+                        d["May"],
+                        d["Jun"],
+                        d["Jul"],
+                        d["Aug"],
+                        d["Sep"],
+                        d["Oct"],
+                        d["Nov"],
+                        d["Dec"],
+                    ]
     
+    if farmer_num in short_hire_106y_dict:
+        return short_hire_106y_dict.get(farmer_num)
+    else:
+        return []
+    
+
 def build_official_data(comparison_dict) -> None:
 #     no_hh_count = 0
 #     count = 0
@@ -185,11 +210,13 @@ def build_official_data(comparison_dict) -> None:
 #         address, birthday, farmer_id, farmer_num = '', '', '', ''
         
         if sample['id'] in comparison_dict:
-            members = households.get(comparison_dict[sample['id']])
-            members_data = get_members_base_data(members)
-            data_set = get_data_set(members)
-            mon_hire_104y_list = get_104_month_hire(sample)
+#             members = households.get(comparison_dict[sample['id']])
+#             members_data = get_members_base_data(members)
+#             data_set = get_data_set(members)
+#             mon_hire_104y_list = get_104_month_hire(sample)
             hire_106y_list = get_106_hire(sample['farmer_num'])
+            short_hire_106y_list = get_106_short_hire(sample['farmer_num'])
+            lack_situatuin = sample.get('lacks106')
             
             # households.get(household_num) : 每戶 
             # person : 每戶的每個人
