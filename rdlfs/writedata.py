@@ -4,17 +4,19 @@ import openpyxl
 import os
 import time
 from collections import namedtuple
+from generatedata import FILES
 from log import log
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment, Border, Side
 
+
 MAIN = False
 # SAMPLE_PATH = '..\\..\\input\\easy.txt'
 SAMPLE_PATH = '..\\..\\input\\main_107farmerSurvey.txt' if MAIN else '..\\..\\input\\sub_107farmerSurvey.txt'
-JSON_PATH = '..\\..\\output\\json\\公務資料.json' if MAIN else '..\\..\\output\\json\\公務資料_備選.json' 
+JSON_PATH = '..\\..\\output\\json\\公務資料.json' if MAIN else '..\\..\\output\\json\\公務資料_備選.json'
 # JSON_PATH = '..\\..\\output\\json\\json.json'
 FOLDER_NAME = '主選_公務資料' if MAIN else '備選_公務資料'
-FOLDER_PATH = '..\\..\\output\\'+datetime.datetime.now().strftime('%Y%m%d_%H%M%S')+ FOLDER_NAME
+FOLDER_PATH = '..\\..\\output\\' + datetime.datetime.now().strftime('%Y%m%d_%H%M%S') + FOLDER_NAME
 
 SAMPLE_TITLES = ['農戶編號', '調查姓名', '電話', '地址', '出生年', '原層別', '連結編號']
 HOUSEHOLD_TITLES = ['[戶籍檔]', '出生年', '關係', '死亡或除戶', '農保', '老農津貼', '國保給付', '勞保給付', '勞退給付', '農保給付']
@@ -24,30 +26,30 @@ SB_SBDY_TITLES = ['[107小大]', '姓名', '大專業農轉契作', '小地主�
 LIVESTOCK_TITLES = ['[畜牧資訊]', '年', '調查時間', '畜牧品項', '在養數量', '屠宰數量', '副產品名稱', '副產品數量']
 SAMPLE_ROSTER_TITLES = ['序號', '樣本套號 ', '農戶編號', '連結編號 ', '戶長姓名', '電話 ', '地址 ', '層別 ', '經營種類 ', '可耕作地面積', '成功打勾']
 SAMPLE_ATTR = [
-        'layer',
-        'name',
-        'tel',
-        'addr',
-        'county',
-        'town',
-        'link_num',
-        'id',
-        'num',
-        'main_type',
-        'area',
-        'sample_num',
-    ]
+    'layer',
+    'name',
+    'tel',
+    'addr',
+    'county',
+    'town',
+    'link_num',
+    'id',
+    'num',
+    'main_type',
+    'area',
+    'sample_num',
+]
 Sample = namedtuple('Sample', SAMPLE_ATTR)
 
 TYPE_FLAG = '主選' if MAIN else '備選'
 ALIGNMENT = Alignment(horizontal='center', vertical='bottom')
-SIDE =Side(style='medium')
+SIDE = Side(style='medium')
 BORDER = Border(
-        top=SIDE,
-        bottom=SIDE,
-        left=SIDE,
-        right=SIDE
-    )
+    top=SIDE,
+    bottom=SIDE,
+    left=SIDE,
+    right=SIDE
+)
 
 # sorted by county
 sample_dict = {}
@@ -55,6 +57,7 @@ official_data = json.loads(open(JSON_PATH, encoding='utf8').read())
 
 if not os.path.isdir(FOLDER_PATH):
     os.mkdir(FOLDER_PATH)
+
 
 def set_excel_title(sheet, row_index, flag, titles) -> None:
     if flag == 'sample_roster':
@@ -65,7 +68,7 @@ def set_excel_title(sheet, row_index, flag, titles) -> None:
             cell.border = BORDER
     else:
         for index, title in enumerate(titles, start=1):
-                sheet.cell(column=index, row=row_index).value = title
+            sheet.cell(column=index, row=row_index).value = title
 
 
 def read_sample() -> None:
@@ -85,17 +88,12 @@ def read_sample() -> None:
                 sample_dict.get(county).append(sample)
 
 
-def output_excel(type_flag=TYPE_FLAG) -> None:
+def output_excel() -> None:
     total = 0
     count = 0
     count_sample = len(sample_dict)
     for county, samples in sample_dict.items():
         count += 1
-        if type_flag == '主選':
-            samples.sort(key=lambda x:x.town)
-        else:
-            samples.sort(key=lambda x:x.num[-5:])
-        
         total += len(samples)
         print(total)
         wb = openpyxl.Workbook()
@@ -104,23 +102,19 @@ def output_excel(type_flag=TYPE_FLAG) -> None:
         county = county
         town = samples[0].town
         sheet = wb.active
-        sheet.title = town if type_flag == '主選' else 'sheet'+str(row_index+1)
         print(county, '( {} / {})'.format(count, count_sample))
-        
+
         for sample in samples:
             scholarship = ''
             sb = ''
             farmer_num = sample.num
             crops = []
             sample_data = official_data.get(farmer_num)
-            if type_flag == '主選' and town != sample.town:
-                town = sample.town
-                sheet = wb.create_sheet(town)
-                row_index = 1
-            if row_index-1 == 0:
-                width = list(map(lambda x: x*1.054,[14.29, 9.29, 16.29, 29.29, 9.29, 11.29, 11.29, 11.29, 11.29]))
-                for i in range(1, len(width)+1):
-                    sheet.column_dimensions[get_column_letter(i)].width = width[i-1]
+
+            if row_index - 1 == 0:
+                width = list(map(lambda x: x * 1.054, [14.29, 9.29, 16.29, 29.29, 9.29, 11.29, 11.29, 11.29, 11.29]))
+                for i in range(1, len(width) + 1):
+                    sheet.column_dimensions[get_column_letter(i)].width = width[i - 1]
             set_excel_title(sheet, row_index, 'sample', SAMPLE_TITLES)
             row_index += 1
             info = [
@@ -130,10 +124,11 @@ def output_excel(type_flag=TYPE_FLAG) -> None:
             for index, value in enumerate(info, start=1):
                 sheet.cell(column=index, row=row_index).value = value
                 sheet.cell(column=index, row=row_index).alignment = Alignment(wrap_text=True)
-                
+
             row_index += 1
-            sheet.cell(column=col_index, row=row_index).value = ' -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- '
-            
+            sheet.cell(column=col_index,
+                       row=row_index).value = ' -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- '
+
             row_index += 1
             set_excel_title(sheet, row_index, 'household', HOUSEHOLD_TITLES)
             household = sample_data.get('household')
@@ -142,26 +137,19 @@ def output_excel(type_flag=TYPE_FLAG) -> None:
             for person in household:
                 row_index += 1
                 for index, p_data in enumerate(person, start=2):
-                    if index in [5+2, 6+2, 7+2, 8+2] and p_data:
+                    if index in [5 + 2, 6 + 2, 7 + 2, 8 + 2] and p_data:
                         sheet.cell(column=index, row=row_index).number_format = '#,###,###'
                         p_data = eval(p_data.replace(',', ''))
-                    if index == 9+2:
+                    if index == 9 + 2:
                         if person[9]:
                             scholarship += person[9] + ','
                         continue
-                    if index == 10+2 and person[10] not in sb:
+                    if index == 10 + 2 and person[10] not in sb:
                         sb += person[10]
                         break
                     sheet.cell(column=index, row=row_index).value = p_data
                     sheet.cell(column=index, row=row_index).alignment = Alignment(horizontal='left')
-            
-            # 輸出申報核定資料，檢查是否有資料
-            declaration = sample_data.get('declaration')
-            if declaration:
-                row_index += 2
-                sheet.cell(column=1, row=row_index).value = '[申報核定]'
-                sheet.cell(column=2, row=row_index).value = declaration
-            
+
             # 輸出轉作補貼資料，檢查是否有資料
             crop_sbdy = sample_data.get('cropSbdy')
             if crop_sbdy:
@@ -175,29 +163,29 @@ def output_excel(type_flag=TYPE_FLAG) -> None:
                     else:
                         crop_d[crop_name] = crop_d.get(crop_name) + amount
                 log.info(county, ', ', town, ', ', farmer_num, ', crop_sbdy = ', crop_d)
-                
+
                 item_index = 0
                 set_excel_title(sheet, row_index, 'transfer_crop', TRANSFER_CROP_TITLES)
-                
+
                 for k, v in crop_d.items():
                     row_index += 1
                     item_index += 1
                     sheet.cell(column=2, row=row_index).value = item_index
                     sheet.cell(column=2, row=row_index).alignment = Alignment(horizontal='left')
                     sheet.cell(column=3, row=row_index).value = k
-                    
+
                     if len(k) > 8:
                         sheet.cell(column=3, row=row_index).alignment = Alignment(wrap_text=True)
-                        
+
                     if v:
                         sheet.cell(column=4, row=row_index).number_format = '#,###,###'
                     sheet.cell(column=4, row=row_index).value = v
                     sheet.cell(column=4, row=row_index).alignment = Alignment(horizontal='left')
                     sheet.cell(column=5, row=row_index).value = '1'
-                    
+
                     if k not in crops:
                         crops.append(k)
-            
+
             # 輸出災害補助資料，檢查是否有資料
             disaster = sample_data.get('disaster')
             if disaster:
@@ -218,10 +206,10 @@ def output_excel(type_flag=TYPE_FLAG) -> None:
                         data['amount'] = data.get('amount') + amount
                     disaster_d[disaster_name] = data
                 log.info(county, ', ', town, ', ', farmer_num, ', disaster = ', disaster_d)
-                    
+
                 row_index += 1
                 set_excel_title(sheet, row_index, 'disaster', DISASTER_TITLES)
-                
+
                 for k, v in disaster_d.items():
                     row_index += 1
                     item_index += 1
@@ -229,97 +217,64 @@ def output_excel(type_flag=TYPE_FLAG) -> None:
                     sheet.cell(column=2, row=row_index).alignment = Alignment(horizontal='left')
                     l = k.split('-')
                     sheet.cell(column=3, row=row_index).value = l[0]
-                    
+
                     if len(l[0]) > 8:
                         sheet.cell(column=3, row=row_index).alignment = Alignment(wrap_text=True)
                     sheet.cell(column=4, row=row_index).value = l[1]
                     sheet.cell(column=5, row=row_index).value = v.get('area')
                     sheet.cell(column=5, row=row_index).alignment = Alignment(horizontal='left')
-                    
+
                     if v.get('amount'):
                         sheet.cell(column=6, row=row_index).number_format = '#,###,###'
                     sheet.cell(column=6, row=row_index).value = v.get('amount')
                     sheet.cell(column=6, row=row_index).alignment = Alignment(horizontal='left')
-                    
+
                     if l[1] not in crops:
                         crops.append(l[1])
-            
-            # 輸出小大補助資料，檢查是否有資料
-            sb_sbdy = sample_data.get('sbSbdy')
-            if sb_sbdy:
-                row_index += 2
-                set_excel_title(sheet, row_index, 'sb_sbdy', SB_SBDY_TITLES)
-                for i in sb_sbdy:
-                    row_index += 1
-                    for index, j in enumerate(i, start=2):
-                        if index >= 3:
-                            if int(eval(j)):
-                                sheet.cell(column=index, row=row_index).number_format = '#,###,###'
-                            sheet.cell(column=index, row=row_index).alignment = Alignment(horizontal='left')
-                            sheet.cell(column=index, row=row_index).value = int(eval(j))
-                        else:
-                            sheet.cell(column=index, row=row_index).value = j
-            
-            # 輸出畜牧資料，檢查是否有資料
-            livestock = sample_data.get('livestock')
-            if livestock:
-                row_index += 2
-                set_excel_title(sheet, row_index, 'livestock', LIVESTOCK_TITLES)
-                for k, v in livestock.items():
-                    row_index += 1
-                    sheet.cell(column=1, row=row_index).value = k
-                    if len(k) > 6:
-                        sheet.cell(column=1, row=row_index).alignment = Alignment(wrap_text=True)
-                    v.sort(key=lambda x:x[6]+x[0])
-                    
-                    for index, i in enumerate(v, start=1):
-                        sheet.cell(column=2, row=row_index).value = i[6]
-                        sheet.cell(column=3, row=row_index).value = i[0]
-                        sheet.cell(column=4, row=row_index).value = i[1]
-                        raise_count = int(eval(i[2])) if i[2].isnumeric() else i[2]
-                        sheet.cell(column=5, row=row_index).value = raise_count
-                        sheet.cell(column=5, row=row_index).alignment = Alignment(horizontal='left')
-                        slaughter_count = int(eval(i[3])) if i[3].isnumeric() else i[3] 
-                        sheet.cell(column=6, row=row_index).value = slaughter_count
-                        sheet.cell(column=6, row=row_index).alignment = Alignment(horizontal='left')
-                        sheet.cell(column=7, row=row_index).value = i[4]
-                        sheet.cell(column=7, row=row_index).alignment = Alignment(horizontal='left')
-                        sheet.cell(column=8, row=row_index).value = int(eval(i[5]))
-                        sheet.cell(column=8, row=row_index).alignment = Alignment(horizontal='left')
-                        if index != len(v):
-                            row_index += 1
-                        
+
             # 年度作物
             if crops:
                 row_index += 2
                 sheet.cell(column=1, row=row_index).value = '[106y-107y作物]'
                 sheet.cell(column=2, row=row_index).value = ','.join(crops)
                 log.info(county, ', ', town, ', ', farmer_num, ', crops = ', crops)
-            
-            # 小大與獎助學金
-            if sb:
-                row_index += 2
-                sheet.cell(column=1, row=row_index).value = '[小大]'
-                sheet.cell(column=2, row=row_index).value = sb
-                log.info(county, ', ', town, ', ', farmer_num, ', sb = ', sb)
 
-            if scholarship:
-                row_index += 2
-                sheet.cell(column=1, row=row_index).value = '[子女獎助學金]'
-                sheet.cell(column=2, row=row_index).value = scholarship[:-1]
-                log.info(county, ', ', town, ', ', farmer_num, ', scholarship = ', scholarship)
             row_index += 1
-            sheet.cell(column=col_index, row=row_index).value = ' ================================================================================================================================= '
+            sheet.cell(column=col_index,
+                       row=row_index).value = ' ================================================================================================================================= '
             row_index += 1
             sheet.cell(column=col_index, row=row_index).value = ''
-        
+
         excel_name = FOLDER_PATH + '\\' + county + '.xlsx' if MAIN else FOLDER_PATH + '\\' + county + '(備選公務檔)' + '.xlsx'
         wb.save(excel_name)
-        
+
+
+# start_time = time.time()
+# read_sample()
+# output_excel()
+# m, s = divmod(time.time() - start_time, 60)
+# print(int(m), 'min', round(s, 1), 'sec')
+# log.info(int(m), ' min ', round(s, 1), ' sec')
+
+
+def read_result_data() -> dict:
+    data_dict = {}
     
-start_time = time.time()
-read_sample()
-output_excel()
-m, s = divmod(time.time()-start_time, 60)
-print(int(m), 'min', round(s, 1), 'sec')
-log.info(int(m), ' min ', round(s, 1), ' sec')
+    for data in json.loads(open(FILES['result_json'], encoding='utf8').read()).values():
+        county = data.get('addr')[:3]
+        if county not in data_dict:
+            data_dict[county] = [data]
+        else:
+            data_dict.get(county).append(data)
+            
+    return data_dict
+
+
+def write_data_to_excel() -> None:
+    data_dict = read_result_data()
+    for i in data_dict.keys():
+        print(i)
+
+
+if __name__ == '__main__':
+    write_data_to_excel()
