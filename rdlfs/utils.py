@@ -68,8 +68,14 @@ class ExcelHandler:
         self.__sheet.cell(column=self.column_index, row=self.row_index).value = ' ' + '-'*206 + ' '
         self.row_index = 1
 
-    def __set_household_data(self, data):
-        ...
+    def __set_household_data(self, members):
+        self.__set_title(self.titles['household'])
+        if members:
+            for person in members:
+                self.row_index = 1
+                for index, val in enumerate(person, start=1):
+                    self.__sheet.cell(column=index, row=self.row_index).value = val
+                    self.__sheet.cell(column=index, row=self.row_index).alignment = Alignment(horizontal='left')
 
     def set_data(self, data):
         self.__set_sample_base_data(data)
