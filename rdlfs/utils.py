@@ -13,7 +13,10 @@ class ExcelHandler:
         'crops_name': '[106y-107y作物]',
         'fir_half': ['[{}]', '一月', '二月', '三月', '四月', '五月', '六月'],
         'sec_half': ['七月', '八月', '九月', '十月', '十一月', '十二月'],
-        '106y_hire': ['[106每月常僱員工]'],
+        'hire': '[106每月常僱員工]',
+        'lack_situation': '[106勞動力短缺情形]',
+        'lack': '106短缺常僱員工',
+        'short_lack': '106短缺臨時僱工',
     }
 
     def __init__(self):
@@ -126,7 +129,7 @@ class ExcelHandler:
         self.__sheet.cell(column=2, row=self.row_index).value = crops
         self.__crop_set.clear()
 
-    def __set_104y__hire_or_106y_short_hire(self, hire_list, is104y=True):
+    def __set_104y__hire_or_short_hire(self, hire_list, is104y=True):
         if not hire_list:
             return
         if is104y:
@@ -144,18 +147,29 @@ class ExcelHandler:
         for index, mon, in enumerate(hire_list[6:], start=2):
             self.__sheet.cell(column=2, row=self.row_index).value = mon
 
-    def __set_106y_hire(self, hire_list):
-        if not hire_list:
+    def __set_hire_lack_or_short_lack(self, data_list, title, is_short_lack=False):
+        if not data_list:
             return
         self.row_index = 2
-        work_type = [d['工作類型'] for d in hire_list].insert(0, '工作類型')
-        number = [d['常僱人數'] for d in hire_list].insert(0, '人數')
-        mon = [d['months'] for d in hire_list].insert(0, '月份')
-        self.__sheet.cell(column=1, row=self.row_index).value = self.titles['106y_hire']
-        for _list in [work_type, number, mon]:
-            for index, i in enumerate(_list, start=2):
+        work_type = [d['工作類型'] for d in data_list].insert(0, '工作類型')
+        number = [d['常僱人數'] for d in data_list].insert(0, '人數')
+        mon = [d['months'] for d in data_list].insert(0, '月份')
+        _list = [work_type, number, mon]
+        if is_short_lack:
+            _list.insert(0, [d['產品名稱'] for d in data_list].insert(0, '產品'))
+
+        self.__sheet.cell(column=1, row=self.row_index).value = self.titles[title]
+        for inner_list in _list:
+            for index, i in enumerate(inner_list, start=2):
                 self.row_index = 1
                 self.__sheet.cell(column=index, row=self.row_index).value = i
+
+    def __set_lack_situation(self, _str):
+        if not _str:
+            return
+        self.row_index = 2
+        self.__sheet.cell(column=1, row=self.row_index).value = self.titles['lack_situation']
+        self.__sheet.cell(column=2, row=self.row_index).value = _str
 
     def set_data(self, data):
         self.__set_sample_base_data(data)
@@ -163,5 +177,9 @@ class ExcelHandler:
         self.__set_crop_sbdy_data(data['crop_sbdy'])
         self.__set_crop_sbdy_data(data['disaster'])
         self.__set_crops_name()
-        self.__set_104y__hire_or_106y_short_hire(data['mon_hire_104y'])
-        self.__set_106y_hire(data['hire_106y'])
+        self.__set_104y__hire_or_short_hire(data['mon_hire_104y'])
+        self.__set_hire_lack_or_short_lack(data['hire_106y'], 'hire')
+        self.__set_104y__hire_or_short_hire(data['short_hire_106y'], False)
+        self.__set_lack_situation(data['lack_situation'])
+        self.__set_hire_lack_or_short_lack(data['lack_106y'], 'lack')
+        self.__set_hire_lack_or_short_lack(data['short_lack_106y'], 'short_lack')
