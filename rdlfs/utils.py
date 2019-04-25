@@ -3,26 +3,26 @@ import os
 from functools import reduce
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment, Border, Side
-from writedata import path
 
 
 class ExcelHandler:
     titles = {
         'sample': ['農戶編號', '調查姓名', '電話', '地址', '出生年', '原層別', '連結編號'],
-        'household': ['出生年', '關係'],
+        'household': ['[戶籍檔]', '出生年', '關係'],
         'crop_sbdy': ['[轉作補貼]', '項目', '作物名稱', '期別'],
         'disaster': ['[災害]', '項目', '災害', '核定作物', '核定面積'],
         'crops_name': '[106y-107y作物]',
-        'fir_half': ['[{}]', '一月', '二月', '三月', '四月', '五月', '六月'],
+        'fir_half': ['', '一月', '二月', '三月', '四月', '五月', '六月'],
         'sec_half': ['七月', '八月', '九月', '十月', '十一月', '十二月'],
         'hire': '[106每月常僱員工]',
         'lack_situation': '[106勞動力短缺情形]',
-        'lack': '106短缺常僱員工',
-        'short_lack': '106短缺臨時僱工',
+        'lack': '[106短缺常僱員工]',
+        'short_lack': '[106短缺臨時僱工]',
     }
 
-    def __init__(self, county):
+    def __init__(self, county, path):
         self.__county = county
+        self.__path = path
         self.__col_index = 1
         self.__row_index = 1
         self.__wb = openpyxl.Workbook()
@@ -54,7 +54,7 @@ class ExcelHandler:
             self.__row_index += i
 
     def __set_column_width(self):
-        width = list(map(lambda x: x * 1.054, [14.29, 9.29, 16.29, 29.29, 9.29, 11.29, 11.29, 11.29, 11.29]))
+        width = list(map(lambda x: x * 1.054, [20.29, 9.29, 16.29, 29.29, 9.29, 11.29, 11.29, 11.29, 11.29]))
         for i in range(1, len(width) + 1):
             self.__sheet.column_dimensions[get_column_letter(i)].width = width[i - 1]
         self.row_index = 1
@@ -73,7 +73,7 @@ class ExcelHandler:
             self.__sheet.cell(column=index, row=self.row_index).value = val
             self.__sheet.cell(column=index, row=self.row_index).alignment = Alignment(wrap_text=True)
         self.row_index = 1
-        self.__sheet.cell(column=self.column_index, row=self.row_index).value = ' ' + '-'*206 + ' '
+        self.__sheet.cell(column=self.column_index, row=self.row_index).value = ' ' + '-' * 206 + ' '
         self.row_index = 1
 
     def __set_household_data(self, members):
@@ -81,8 +81,7 @@ class ExcelHandler:
         if not members:
             return
         for person in members:
-            self.row_index = 1
-            for index, val in enumerate(person, start=1):
+            for index, val in enumerate(person, start=2):
                 self.__sheet.cell(column=index, row=self.row_index).value = val
                 self.__sheet.cell(column=index, row=self.row_index).alignment = Alignment(horizontal='left')
 
@@ -126,6 +125,8 @@ class ExcelHandler:
             self.__sheet.cell(column=5, row=self.row_index).value = _tuple[1]
 
     def __set_crops_name(self):
+        if not self.__crop_set:
+            return
         self.row_index = 2
         crops = reduce(lambda a, b: a + ', ' + b, self.__crop_set)
         self.__sheet.cell(column=1, row=self.row_index).value = self.titles['crops_name']
@@ -136,36 +137,49 @@ class ExcelHandler:
         if not hire_list:
             return
         if is104y:
-            self.titles['fir_half'][0].format('[104農普每月僱工]')
+            self.titles['fir_half'][0] = '[104農普每月僱工]'
         else:
-            self.titles['fir_half'][0].format('[106每月臨時僱工]')
+            self.titles['fir_half'][0] = '[106每月臨時僱工]'
 
         self.row_index = 2
         self.__set_title('fir_half')
-        for index, mon, in enumerate(hire_list[:6]):
-            self.__sheet.cell(column=2, row=self.row_index).value = mon
+        for index, mon, in enumerate(hire_list[:6], start=2):
+            self.__sheet.cell(column=index, row=self.row_index).value = str(mon)
 
         self.row_index = 1
-        self.__set_title('sec_half')
+        self.__set_title('sec_half', 2)
         for index, mon, in enumerate(hire_list[6:], start=2):
-            self.__sheet.cell(column=2, row=self.row_index).value = mon
+            self.__sheet.cell(column=index, row=self.row_index).value = str(mon)
 
     def __set_hire_lack_or_short_lack(self, data_list, title, is_short_lack=False):
         if not data_list:
             return
         self.row_index = 2
-        work_type = [d['工作類型'] for d in data_list].insert(0, '工作類型')
-        number = [d['常僱人數'] for d in data_list].insert(0, '人數')
-        mon = [d['months'] for d in data_list].insert(0, '月份')
+        number_d = {
+            'hire': '常僱人數',
+            'lack': '常缺人數',
+            'short_lack': '臨缺人數',
+        }
+        work_type = [d['工作類型'] for d in data_list]
+        work_type.insert(0, '工作類型')
+        number = [d[number_d[title]] for d in data_list]
+        number.insert(0, '人數')
+        mon = [reduce(lambda a, b: str(a) + ', ' + str(b), l) for l in [d['months'] for d in data_list]]
+        mon.insert(0, '月份')
         _list = [work_type, number, mon]
         if is_short_lack:
-            _list.insert(0, [d['產品名稱'] for d in data_list].insert(0, '產品'))
+            product = [d['產品名稱'] for d in data_list]
+            product.insert(0, '產品')
+            _list.insert(0, product)
 
         self.__sheet.cell(column=1, row=self.row_index).value = self.titles[title]
-        for inner_list in _list:
-            for index, i in enumerate(inner_list, start=2):
+        for x, inner_list in enumerate(_list, start=1):
+            if x > 1:
                 self.row_index = 1
-                self.__sheet.cell(column=index, row=self.row_index).value = i
+            for index, i in enumerate(inner_list, start=2):
+                self.__sheet.cell(column=index, row=self.row_index).value = str(i)
+                if len(str(i)) > 8:
+                    self.__sheet.cell(column=index, row=self.row_index).alignment = Alignment(wrap_text=True)
 
     def __set_lack_situation(self, _str):
         if not _str:
@@ -176,7 +190,7 @@ class ExcelHandler:
 
     def __set_seprate_symbol(self):
         self.row_index = 1
-        self.__sheet.cell(column=1, row=self.row_index).value = ' ' + '='*129 + ' '
+        self.__sheet.cell(column=1, row=self.row_index).value = ' ' + '=' * 129 + ' '
         self.row_index = 1
         self.__sheet.cell(column=1, row=self.row_index).value = ''
 
@@ -184,7 +198,7 @@ class ExcelHandler:
         self.__set_sample_base_data(data)
         self.__set_household_data(data['household'])
         self.__set_crop_sbdy_data(data['crop_sbdy'])
-        self.__set_crop_sbdy_data(data['disaster'])
+        self.__set_disaster_data(data['disaster'])
         self.__set_crops_name()
         self.__set_104y__hire_or_short_hire(data['mon_hire_104y'])
         self.__set_hire_lack_or_short_lack(data['hire_106y'], 'hire')
@@ -192,5 +206,5 @@ class ExcelHandler:
         self.__set_lack_situation(data['lack_situation'])
         self.__set_hire_lack_or_short_lack(data['lack_106y'], 'lack')
         self.__set_hire_lack_or_short_lack(data['short_lack_106y'], 'short_lack')
-        
-        self.__wb.save(os.path.join(path, self.__county + '.xlsx'))
+        self.__set_seprate_symbol()
+        self.__wb.save(os.path.join(self.__path, self.__county + '.xlsx'))
