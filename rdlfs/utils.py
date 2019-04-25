@@ -1,4 +1,5 @@
 import openpyxl
+from functools import reduce
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment, Border, Side
 
@@ -9,10 +10,9 @@ class ExcelHandler:
         'household': ['出生年', '關係'],
         'crop_sbdy': ['[轉作補貼]', '項目', '作物名稱', '期別'],
         'disaster': ['[災害]', '項目', '災害', '核定作物', '核定面積'],
-        '104_mon_hire_fir_half': ['[104年農普每月僱工]', '一月', '二月', '三月', '四月', '五月', '六月'],
-        '104_mon_hire_sec_half': ['七月', '八月', '九月', '十月', '十一月', '十二月'],
-        '106_shirt_hire_fir_half': ['一月', '二月', '三月', '四月', '五月', '六月'],
-        '106_shirt_hire_sec_half': ['七月', '八月', '九月', '十月', '十一月', '十二月'],
+        'fir_half': ['[{}]', '一月', '二月', '三月', '四月', '五月', '六月'],
+        'sec_half': ['七月', '八月', '九月', '十月', '十一月', '十二月'],
+        'crops_name': '[106y-107y作物]',
     }
 
     def __init__(self):
@@ -52,8 +52,8 @@ class ExcelHandler:
             self.__sheet.column_dimensions[get_column_letter(i)].width = width[i - 1]
         self.row_index = 1
 
-    def __set_title(self, title):
-        for index, _title in enumerate(self.titles[title], start=1):
+    def __set_title(self, title, start=1):
+        for index, _title in enumerate(self.titles[title], start=start):
             self.__sheet.cell(column=index, row=self.row_index).value = _title
         self.row_index = 1
 
@@ -115,8 +115,35 @@ class ExcelHandler:
                 self.__sheet.cell(column=4, row=self.row_index).value = _tuple[0][1]
                 self.__sheet.cell(column=5, row=self.row_index).value = _tuple[1]
 
+    def __set_crops_name(self):
+        self.row_index = 2
+        crops = reduce(lambda a, b: a + ', ' + b, self.__crop_set)
+        self.__sheet.cell(column=1, row=self.row_index).value = self.titles['crops_name']
+        self.__sheet.cell(column=2, row=self.row_index).value = crops
+        self.__crop_set.clear()
+
+    def __set_104y__hire_or_106y_short_hire(self, hire_list, is104y=True):
+        if not hire_list:
+            return
+        if is104y:
+            self.titles['fir_half'][0].format('[104農普每月僱工]')
+        else:
+            self.titles['fir_half'][0].format('[106每月臨時僱工]')
+
+        self.row_index = 2
+        self.__set_title('fir_half')
+        for index, mon, in enumerate(hire_list[:6], start=2):
+            self.__sheet.cell(column=2, row=self.row_index).value = mon
+
+        self.row_index = 1
+        self.__set_title('sec_half')
+        for index, mon, in enumerate(hire_list[6:], start=2):
+            self.__sheet.cell(column=2, row=self.row_index).value = mon
+
     def set_data(self, data):
         self.__set_sample_base_data(data)
         self.__set_household_data(data['household'])
         self.__set_crop_sbdy_data(data['crop_sbdy'])
         self.__set_crop_sbdy_data(data['disaster'])
+        self.__set_crops_name()
+        self.__set_104y__hire_or_106y_short_hire(data['mon_hire_104y'])
