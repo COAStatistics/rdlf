@@ -1,7 +1,9 @@
 import openpyxl
+import os
 from functools import reduce
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment, Border, Side
+from writedata import path
 
 
 class ExcelHandler:
@@ -19,7 +21,8 @@ class ExcelHandler:
         'short_lack': '106短缺臨時僱工',
     }
 
-    def __init__(self):
+    def __init__(self, county):
+        self.__county = county
         self.__col_index = 1
         self.__row_index = 1
         self.__wb = openpyxl.Workbook()
@@ -171,6 +174,12 @@ class ExcelHandler:
         self.__sheet.cell(column=1, row=self.row_index).value = self.titles['lack_situation']
         self.__sheet.cell(column=2, row=self.row_index).value = _str
 
+    def __set_seprate_symbol(self):
+        self.row_index = 1
+        self.__sheet.cell(column=1, row=self.row_index).value = ' ' + '='*129 + ' '
+        self.row_index = 1
+        self.__sheet.cell(column=1, row=self.row_index).value = ''
+
     def set_data(self, data):
         self.__set_sample_base_data(data)
         self.__set_household_data(data['household'])
@@ -183,3 +192,5 @@ class ExcelHandler:
         self.__set_lack_situation(data['lack_situation'])
         self.__set_hire_lack_or_short_lack(data['lack_106y'], 'lack')
         self.__set_hire_lack_or_short_lack(data['short_lack_106y'], 'short_lack')
+        
+        self.__wb.save(os.path.join(path, self.__county + '.xlsx'))
