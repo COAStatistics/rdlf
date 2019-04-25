@@ -4,10 +4,11 @@ import openpyxl
 import os
 import time
 from collections import namedtuple
-from generatedata import FILES
+from generatedata import FILES, OUTPUT_DATA_DIR
 from log import log
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment, Border, Side
+from utils import ExcelHandler
 
 
 MAIN = False
@@ -53,10 +54,8 @@ BORDER = Border(
 
 # sorted by county
 sample_dict = {}
-official_data = json.loads(open(JSON_PATH, encoding='utf8').read())
-
-if not os.path.isdir(FOLDER_PATH):
-    os.mkdir(FOLDER_PATH)
+# official_data = json.loads(open(JSON_PATH, encoding='utf8').read())
+official_data = {}
 
 
 def set_excel_title(sheet, row_index, flag, titles) -> None:
@@ -259,22 +258,27 @@ def output_excel() -> None:
 
 def read_result_data() -> dict:
     data_dict = {}
-    
     for data in json.loads(open(FILES['result_json'], encoding='utf8').read()).values():
         county = data.get('addr')[:3]
         if county not in data_dict:
             data_dict[county] = [data]
         else:
             data_dict.get(county).append(data)
-            
+
     return data_dict
 
 
 def write_data_to_excel() -> None:
     data_dict = read_result_data()
-    for i in data_dict.keys():
-        print(i)
+    for county, data_set in data_dict.items():
+        handler = ExcelHandler(county)
+        for data in data_set:
+            handler.set_data(data)
+            ...
 
 
 if __name__ == '__main__':
+    path = os.path.join(OUTPUT_DATA_DIR, datetime.datetime.now().strftime('%Y%m%d_%H%M%S') + '_公務資料(縣市切割)')
+    if not os.path.isdir(path):
+        os.mkdir(path)
     write_data_to_excel()
