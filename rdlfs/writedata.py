@@ -20,7 +20,6 @@ def write_data_to_excel(path_tuple) -> None:
     for data in data_list:
         handler.set_data(data)
     handler.save()
-    print(county, 'comelete ...')
 
 if __name__ == '__main__':
     start_time = time.time()

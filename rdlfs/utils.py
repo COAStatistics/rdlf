@@ -2,7 +2,7 @@ import openpyxl
 import os
 from functools import reduce
 from openpyxl.utils import get_column_letter
-from openpyxl.styles import Alignment, Border, Side
+from openpyxl.styles import Alignment, Border, Side, Color, PatternFill, Font
 
 
 class ExcelHandler:
@@ -28,7 +28,6 @@ class ExcelHandler:
         self.__wb = openpyxl.Workbook()
         self.__sheet = self.__wb.active
         self.__crop_set = set()
-
         self.__set_column_width()
 
     @property
@@ -80,7 +79,9 @@ class ExcelHandler:
         self.__set_title('household')
         if not members:
             return
-        for person in members:
+        for i, person in enumerate(members):
+            if i > 0:
+                    self.row_index = 1
             for index, val in enumerate(person, start=2):
                 self.__sheet.cell(column=index, row=self.row_index).value = val
                 self.__sheet.cell(column=index, row=self.row_index).alignment = Alignment(horizontal='left')
@@ -95,7 +96,7 @@ class ExcelHandler:
         for index, val in enumerate(crop_name, start=1):
             if index >= 2:
                 self.row_index = 1
-            self.__sheet.cell(column=2, row=self.row_index).value = index
+            self.__sheet.cell(column=2, row=self.row_index).value = str(index)
             self.__sheet.cell(column=3, row=self.row_index).value = val
             self.__sheet.cell(column=4, row=self.row_index).value = '1'
 
@@ -119,7 +120,7 @@ class ExcelHandler:
             if index >= 2:
                 self.row_index = 1
             self.__crop_set.add(_tuple[0][1])
-            self.__sheet.cell(column=2, row=self.row_index).value = index
+            self.__sheet.cell(column=2, row=self.row_index).value = str(index)
             self.__sheet.cell(column=3, row=self.row_index).value = _tuple[0][0]
             self.__sheet.cell(column=4, row=self.row_index).value = _tuple[0][1]
             self.__sheet.cell(column=5, row=self.row_index).value = _tuple[1]
@@ -168,13 +169,13 @@ class ExcelHandler:
         mon.insert(0, '月份')
         _list = [work_type, number, mon]
         if is_short_lack:
-            product = [d['產品名稱'] for d in data_list]
+            product = [d['產品名稱'].replace('\u3000', '') for d in data_list]
             product.insert(0, '產品')
             _list.insert(0, product)
 
         self.__sheet.cell(column=1, row=self.row_index).value = self.titles[title]
-        for x, inner_list in enumerate(_list, start=1):
-            if x > 1:
+        for x, inner_list in enumerate(_list):
+            if x > 0:
                 self.row_index = 1
             for index, i in enumerate(inner_list, start=2):
                 self.__sheet.cell(column=index, row=self.row_index).value = str(i)
@@ -205,7 +206,7 @@ class ExcelHandler:
         self.__set_104y__hire_or_short_hire(data['short_hire_106y'], False)
         self.__set_lack_situation(data['lack_situation'])
         self.__set_hire_lack_or_short_lack(data['lack_106y'], 'lack')
-        self.__set_hire_lack_or_short_lack(data['short_lack_106y'], 'short_lack')
+        self.__set_hire_lack_or_short_lack(data['short_lack_106y'], 'short_lack', True)
         self.__set_seprate_symbol()
     
     def save(self):
