@@ -1,4 +1,5 @@
 import datetime
+import multiprocessing
 import json
 import os
 import time
@@ -11,7 +12,8 @@ def read_result_data(path) -> list:
         return json.loads(f.read())
 
 
-def write_data_to_excel(excel_path, json_path) -> None:
+def write_data_to_excel(path_tuple) -> None:
+    excel_path, json_path = path_tuple
     county = json_path[json_path.index('.')-3:json_path.index('.')]
     data_list = read_result_data(json_path)
     handler = utils.ExcelHandler(county, excel_path)
@@ -27,9 +29,12 @@ if __name__ == '__main__':
     if not os.path.isdir(excel_path):
         os.mkdir(excel_path)
     
+    _list = []
     for file_name in os.listdir(json_path):
-        print(file_name, 'processing ...')
-        write_data_to_excel(excel_path, os.path.join(json_path, file_name))
+        _list.append((excel_path, os.path.join(json_path, file_name)))
+    
+    with multiprocessing.Pool(4) as p:
+        [p.map(write_data_to_excel, _list)]
         
     m, s = divmod(time.time() - start_time, 60)
     print(int(m), 'min', round(s, 1), 'sec')
