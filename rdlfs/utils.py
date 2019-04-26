@@ -207,4 +207,6 @@ class ExcelHandler:
         self.__set_hire_lack_or_short_lack(data['lack_106y'], 'lack')
         self.__set_hire_lack_or_short_lack(data['short_lack_106y'], 'short_lack')
         self.__set_seprate_symbol()
+    
+    def save(self):
         self.__wb.save(os.path.join(self.__path, self.__county + '.xlsx'))
