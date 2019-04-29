@@ -2,7 +2,7 @@ import openpyxl
 import os
 from functools import reduce
 from openpyxl.utils import get_column_letter
-from openpyxl.styles import Alignment, Border, Side, Color, PatternFill, Font
+from openpyxl.styles import Alignment, PatternFill, Font
 
 
 class ExcelHandler:
@@ -11,13 +11,13 @@ class ExcelHandler:
         'household': ['[戶籍檔]', '出生年', '關係'],
         'crop_sbdy': ['[轉作補貼]', '項目', '作物名稱', '期別'],
         'disaster': ['[災害]', '項目', '災害', '核定作物', '核定面積'],
-        'crops_name': '[106y-107y作物]',
+        'crops_name': ['[106y-107y作物]'],
         'fir_half': ['', '一月', '二月', '三月', '四月', '五月', '六月'],
         'sec_half': ['七月', '八月', '九月', '十月', '十一月', '十二月'],
-        'hire': '[106每月常僱員工]',
-        'lack_situation': '[106勞動力短缺情形]',
-        'lack': '[106短缺常僱員工]',
-        'short_lack': '[106短缺臨時僱工]',
+        'hire': ['[106每月常僱員工]'],
+        'lack_situation': ['[106勞動力短缺情形]'],
+        'lack': ['[106短缺常僱員工]'],
+        'short_lack': ['[106短缺臨時僱工]'],
     }
 
     def __init__(self, county, path):
@@ -58,12 +58,31 @@ class ExcelHandler:
             self.__sheet.column_dimensions[get_column_letter(i)].width = width[i - 1]
         self.row_index = 1
 
-    def __set_title(self, title, start=1):
+    def __set_cell_style(self, col, row):
+        self.__sheet.cell(column=col, row=row).fill = PatternFill(start_color='C3C5C9', end_color='C3C5C9',
+                                                                  fill_type='solid')
+        self.__sheet.cell(column=col, row=row).font = Font(bold=True)
+
+    def __set_title(self, title, start=1, next_line=True) -> None:
+        """
+        set 每個區塊的 title
+        :param title: title name
+        :param start: 要從第幾欄開始填值
+        :param next_line: set 完 tilte 後是否要換行
+        :return: None
+        """
         for index, _title in enumerate(self.titles[title], start=start):
             self.__sheet.cell(column=index, row=self.row_index).value = _title
-        self.row_index = 1
+            self.__set_cell_style(index, self.row_index)
+        if next_line:
+            self.row_index = 1
 
-    def __set_sample_base_data(self, data):
+    def __set_sample_base_data(self, data) -> None:
+        """
+        set farmer 的基本資料
+        :param data: farmer dict
+        :return: None
+        """
         self.__set_title('sample')
         value_list = [data['farmer_num'], data['name'], data['tel'],
                       data['addr'], data['birthday'], data['layer'], data['link_num']]
@@ -81,16 +100,23 @@ class ExcelHandler:
             return
         for i, person in enumerate(members):
             if i > 0:
-                    self.row_index = 1
+                self.row_index = 1
             for index, val in enumerate(person, start=2):
                 self.__sheet.cell(column=index, row=self.row_index).value = val
                 self.__sheet.cell(column=index, row=self.row_index).alignment = Alignment(horizontal='left')
 
-    def __set_crop_sbdy_data(self, crop_sbdy_list):
+    def __set_crop_sbdy_data(self, crop_sbdy_list) -> None:
+        """
+        如果 crop_sbdy 有資料才處理否則直接 return
+        :param crop_sbdy_list:
+        :return: none
+        """
         if not crop_sbdy_list:
             return
         self.row_index = 2
         self.__set_title('crop_sbdy')
+
+        # 若作物名稱不存在則加入作物 set
         self.__crop_set = crop_name = {i[0] for i in crop_sbdy_list}
 
         for index, val in enumerate(crop_name, start=1):
@@ -100,6 +126,7 @@ class ExcelHandler:
             self.__sheet.cell(column=3, row=self.row_index).value = val
             self.__sheet.cell(column=4, row=self.row_index).value = '1'
 
+            # 若字數過長則自動換行
             if len(val) > 8:
                 self.__sheet.cell(column=3, row=self.row_index).alignment = Alignment(wrap_text=True)
 
@@ -108,6 +135,8 @@ class ExcelHandler:
             return
         _dict = {}
         self.row_index = 2
+
+        # 若有重覆的作物則必須要把面積加起來, key 為複合鍵 e.g. (天災名稱, 作物) 為一個 key
         for d in disaster_list:
             key = (d[0], d[1])
             if key not in _dict:
@@ -130,7 +159,7 @@ class ExcelHandler:
             return
         self.row_index = 2
         crops = reduce(lambda a, b: a + ', ' + b, self.__crop_set)
-        self.__sheet.cell(column=1, row=self.row_index).value = self.titles['crops_name']
+        self.__set_title('crops_name', next_line=False)
         self.__sheet.cell(column=2, row=self.row_index).value = crops
         self.__crop_set.clear()
 
@@ -143,6 +172,8 @@ class ExcelHandler:
             self.titles['fir_half'][0] = '[106每月臨時僱工]'
 
         self.row_index = 2
+
+        # 分兩次迴圈跑, 第一次跑 1-6月, 二次 7-12月
         self.__set_title('fir_half')
         for index, mon, in enumerate(hire_list[:6], start=2):
             self.__sheet.cell(column=index, row=self.row_index).value = str(mon)
@@ -173,11 +204,13 @@ class ExcelHandler:
             product.insert(0, '產品')
             _list.insert(0, product)
 
-        self.__sheet.cell(column=1, row=self.row_index).value = self.titles[title]
+        self.__set_title(title, next_line=False)
         for x, inner_list in enumerate(_list):
             if x > 0:
                 self.row_index = 1
             for index, i in enumerate(inner_list, start=2):
+                if index == 2:
+                    self.__set_cell_style(index, self.row_index)
                 self.__sheet.cell(column=index, row=self.row_index).value = str(i)
                 if len(str(i)) > 8:
                     self.__sheet.cell(column=index, row=self.row_index).alignment = Alignment(wrap_text=True)
@@ -186,7 +219,7 @@ class ExcelHandler:
         if not _str:
             return
         self.row_index = 2
-        self.__sheet.cell(column=1, row=self.row_index).value = self.titles['lack_situation']
+        self.__set_title('lack_situation', next_line=False)
         self.__sheet.cell(column=2, row=self.row_index).value = _str
 
     def __set_seprate_symbol(self):
@@ -208,6 +241,6 @@ class ExcelHandler:
         self.__set_hire_lack_or_short_lack(data['lack_106y'], 'lack')
         self.__set_hire_lack_or_short_lack(data['short_lack_106y'], 'short_lack', True)
         self.__set_seprate_symbol()
-    
+
     def save(self):
         self.__wb.save(os.path.join(self.__path, self.__county + '.xlsx'))
