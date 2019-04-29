@@ -1,11 +1,6 @@
-import linecache
 import pyodbc
 import sys
-import re
-from log import err_log, log
-
-
-INFO_PATH = '..\\..\\info.txt'
+from log import err_log
 
 
 class DatabaseConnection:
@@ -87,10 +82,3 @@ class DatabaseConnection:
         else:
             DatabaseConnection.__instance = DatabaseConnection()
             return DatabaseConnection.__instance
-        
-
-# db = DatabaseConnection('farmer_insurance')
-# DatabaseConnection.pid = 'Q121362090'
-# db.get_tenant_transfer_subsidy()
-# db.get_disaster()
-# db.get_crop_subsidy()
